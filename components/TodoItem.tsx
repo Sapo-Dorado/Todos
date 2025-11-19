@@ -102,6 +102,23 @@ export default function TodoItem({
     setShowContextMenu(true);
   };
 
+  const formatDueDate = (dateString: string) => {
+    const date = new Date(dateString + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const diffTime = date.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays === -1) return 'Yesterday';
+
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const day = date.getDate();
+    return `${month} ${day}`;
+  };
+
   return (
     <>
       <div
@@ -150,9 +167,9 @@ export default function TodoItem({
         <div className="relative">
           <button
             onClick={() => setShowDatePicker(!showDatePicker)}
-            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 whitespace-nowrap"
           >
-            📅
+            {item.due_date ? formatDueDate(item.due_date) : '📅'}
           </button>
           {showDatePicker && (
             <div className="absolute right-0 mt-2 p-2 bg-white border rounded shadow-lg z-10">

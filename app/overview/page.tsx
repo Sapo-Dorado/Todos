@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Item, Category } from '@/types';
 import TodoItem from '@/components/TodoItem';
-import Link from 'next/link';
 
 export default function OverviewPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -108,22 +107,14 @@ export default function OverviewPage() {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">Overview</h1>
-          <div className="flex gap-4">
-            <Link
-              href="/today"
-              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          {hasCompletedItems && (
+            <button
+              onClick={handleDeleteCompleted}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
             >
-              Today
-            </Link>
-            {hasCompletedItems && (
-              <button
-                onClick={handleDeleteCompleted}
-                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                Erase Completed
-              </button>
-            )}
-          </div>
+              Erase Completed
+            </button>
+          )}
         </div>
 
         {/* Add Category Button */}
@@ -143,6 +134,11 @@ export default function OverviewPage() {
               type="text"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddCategory();
+                }
+              }}
               placeholder="Category name"
               className="w-full mb-2 p-2 border rounded"
               autoFocus
@@ -168,7 +164,7 @@ export default function OverviewPage() {
         )}
 
         {/* Categories */}
-        <div className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {categories.map((category) => {
             const items = itemsByCategory[category.id] || [];
             const incompleteItems = items.filter((item) => !item.is_completed);
@@ -207,6 +203,11 @@ export default function OverviewPage() {
                       type="text"
                       value={newItemContent}
                       onChange={(e) => setNewItemContent(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAddItem(category.id);
+                        }
+                      }}
                       placeholder="What needs to be done?"
                       className="w-full mb-2 p-2 border rounded"
                       autoFocus
