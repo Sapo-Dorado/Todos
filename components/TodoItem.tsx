@@ -9,6 +9,7 @@ interface TodoItemProps {
   showReorder?: boolean;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
+  isTodayView?: boolean;
 }
 
 export default function TodoItem({
@@ -17,11 +18,10 @@ export default function TodoItem({
   showReorder = true,
   canMoveUp = true,
   canMoveDown = true,
+  isTodayView = false,
 }: TodoItemProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showContextMenu, setShowContextMenu] = useState(false);
-  const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
   const itemRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,9 +37,6 @@ export default function TodoItem({
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (showContextMenu) {
-        setShowContextMenu(false);
-      }
       if (showDatePicker) {
         setShowDatePicker(false);
       }
@@ -47,7 +44,7 @@ export default function TodoItem({
 
     window.addEventListener('click', handleClickOutside);
     return () => window.removeEventListener('click', handleClickOutside);
-  }, [showContextMenu, showDatePicker]);
+  }, [showDatePicker]);
 
   const handleComplete = async () => {
     await fetch(`/api/items/${item.id}`, {
@@ -73,6 +70,7 @@ export default function TodoItem({
         itemId: item.id,
         direction,
         categoryId: item.category_id,
+        isTodayView,
       }),
     });
     onUpdate();
@@ -90,65 +88,61 @@ export default function TodoItem({
     onUpdate();
   };
 
-  const handleSetDueToday = async () => {
-    const today = new Date().toISOString().split('T')[0];
+  const handleContextMenu = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Get local date, not UTC
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     await fetch(`/api/items/${item.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ due_date: today }),
     });
-    setShowContextMenu(false);
     onUpdate();
   };
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setContextMenuPos({ x: e.clientX, y: e.clientY });
-    setShowContextMenu(true);
-  };
+  const formatDueDate = (dateString: string | null) => {
+    if (!dateString) return '📅';
 
-  const formatDueDate = (dateValue: string | Date | null) => {
-    if (!dateValue) return '📅';
+    try {
+      // Date string is already in YYYY-MM-DD format
+      const date = new Date(dateString + 'T00:00:00');
+      if (isNaN(date.getTime())) {
+        return '📅';
+      }
 
-    // Parse the date properly - handle both string and Date objects
-    let dateString: string;
-    if (typeof dateValue === 'string') {
-      dateString = dateValue;
-    } else {
-      dateString = dateValue.toISOString().split('T')[0];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const diffTime = date.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Tomorrow';
+      if (diffDays === -1) return 'Yesterday';
+
+      const month = date.toLocaleDateString('en-US', { month: 'short' });
+      const day = date.getDate();
+      return `${month} ${day}`;
+    } catch (e) {
+      return '📅';
     }
-
-    const date = new Date(dateString + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const diffTime = date.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    if (diffDays === -1) return 'Yesterday';
-
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const day = date.getDate();
-    return `${month} ${day}`;
   };
 
   const isOverdue = () => {
     if (!item.due_date) return false;
 
-    let dateString: string;
-    if (typeof item.due_date === 'string') {
-      dateString = item.due_date;
-    } else {
-      dateString = item.due_date.toISOString().split('T')[0];
+    try {
+      const dueDate = new Date(item.due_date + 'T00:00:00');
+      if (isNaN(dueDate.getTime())) return false;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      return dueDate < today && !item.is_completed;
+    } catch (e) {
+      return false;
     }
-
-    const dueDate = new Date(dateString + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    return dueDate < today && !item.is_completed;
   };
 
   return (
@@ -213,7 +207,7 @@ export default function TodoItem({
             >
               <input
                 type="date"
-                value={item.due_date ? (typeof item.due_date === 'string' ? item.due_date : item.due_date.toISOString().split('T')[0]) : ''}
+                value={item.due_date || ''}
                 onChange={(e) => handleSetDate(e.target.value)}
                 className="border rounded px-2 py-1"
               />
@@ -221,22 +215,6 @@ export default function TodoItem({
           )}
         </div>
       </div>
-
-      {/* Context menu */}
-      {showContextMenu && (
-        <div
-          className="fixed bg-white border rounded shadow-lg py-1 z-50"
-          style={{ left: contextMenuPos.x, top: contextMenuPos.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={handleSetDueToday}
-            className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-          >
-            Set due today
-          </button>
-        </div>
-      )}
     </>
   );
 }

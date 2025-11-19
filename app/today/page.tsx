@@ -11,7 +11,9 @@ export default function TodayPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const today = new Date().toISOString().split('T')[0];
+  // Get local date, not UTC
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   useEffect(() => {
     fetchItems();
@@ -25,16 +27,33 @@ export default function TodayPage() {
   }, [categories]);
 
   const fetchItems = async () => {
-    const res = await fetch(`/api/items?date=${today}`);
-    const data = await res.json();
-    // Sort: incomplete items first, then completed
-    const sorted = data.sort((a: Item, b: Item) => {
-      if (a.is_completed === b.is_completed) {
-        return a.position - b.position;
+    try {
+      const res = await fetch(`/api/items?date=${today}`);
+      const data = await res.json();
+
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        // Sort to put items with today_position first, nulls last
+        const sorted = data.sort((a: Item, b: Item) => {
+          // First sort by is_completed
+          if (a.is_completed !== b.is_completed) {
+            return a.is_completed ? 1 : -1;
+          }
+          // Then by today_position (nulls last)
+          if (a.today_position === null && b.today_position === null) return 0;
+          if (a.today_position === null) return 1;
+          if (b.today_position === null) return -1;
+          return a.today_position - b.today_position;
+        });
+        setItems(sorted);
+      } else {
+        console.error('API did not return an array:', data);
+        setItems([]);
       }
-      return a.is_completed ? 1 : -1;
-    });
-    setItems(sorted);
+    } catch (error) {
+      console.error('Error fetching items:', error);
+      setItems([]);
+    }
   };
 
   const fetchCategories = async () => {
@@ -153,6 +172,7 @@ export default function TodayPage() {
               showReorder={true}
               canMoveUp={index > 0}
               canMoveDown={index < incompleteItems.length - 1}
+              isTodayView={true}
             />
           ))}
           {completedItems.map((item) => (
@@ -161,6 +181,7 @@ export default function TodayPage() {
               item={item}
               onUpdate={fetchItems}
               showReorder={false}
+              isTodayView={true}
             />
           ))}
         </div>

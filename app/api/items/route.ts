@@ -17,7 +17,11 @@ export async function GET(request: NextRequest) {
             lte: targetDate
           }
         },
-        orderBy: [{ is_completed: 'asc' }, { position: 'asc' }],
+        orderBy: [
+          { is_completed: 'asc' },
+          { today_position: 'asc' },
+          { id: 'asc' }
+        ],
       });
     } else if (categoryId) {
       // Get items for specific category
@@ -32,7 +36,14 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(items);
+    // Serialize dates to YYYY-MM-DD format
+    const serializedItems = items.map(item => ({
+      ...item,
+      due_date: item.due_date ? item.due_date.toISOString().split('T')[0] : null,
+      created_at: item.created_at.toISOString()
+    }));
+
+    return NextResponse.json(serializedItems);
   } catch (error) {
     console.error('Error fetching items:', error);
     return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 });
@@ -53,16 +64,37 @@ export async function POST(request: NextRequest) {
     });
     const newPosition = (maxPositionResult._max.position ?? -1) + 1;
 
+    // If due_date is set, get the highest today_position
+    let todayPosition = null;
+    if (due_date) {
+      const maxTodayPositionResult = await prisma.item.aggregate({
+        where: {
+          due_date: { not: null },
+          is_completed: false,
+        },
+        _max: { today_position: true },
+      });
+      todayPosition = (maxTodayPositionResult._max.today_position ?? -1) + 1;
+    }
+
     const item = await prisma.item.create({
       data: {
         content,
         category_id,
-        due_date: due_date ? new Date(due_date) : null,
+        due_date: due_date ? new Date(due_date + 'T00:00:00') : null,
         position: newPosition,
+        today_position: todayPosition,
       },
     });
 
-    return NextResponse.json(item, { status: 201 });
+    // Serialize dates
+    const serializedItem = {
+      ...item,
+      due_date: item.due_date ? item.due_date.toISOString().split('T')[0] : null,
+      created_at: item.created_at.toISOString()
+    };
+
+    return NextResponse.json(serializedItem, { status: 201 });
   } catch (error) {
     console.error('Error creating item:', error);
     return NextResponse.json({ error: 'Failed to create item' }, { status: 500 });

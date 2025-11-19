@@ -19,10 +19,35 @@ export async function PUT(
       updateData.is_completed = body.is_completed;
     }
     if (body.due_date !== undefined) {
-      updateData.due_date = body.due_date ? new Date(body.due_date) : null;
+      updateData.due_date = body.due_date ? new Date(body.due_date + 'T00:00:00') : null;
+
+      // If setting a due_date and item doesn't have today_position, assign one
+      if (body.due_date) {
+        const currentItem = await prisma.item.findUnique({
+          where: { id: parseInt(id) },
+          select: { today_position: true }
+        });
+
+        if (currentItem && currentItem.today_position === null) {
+          const maxTodayPositionResult = await prisma.item.aggregate({
+            where: {
+              due_date: { not: null },
+              is_completed: false,
+            },
+            _max: { today_position: true },
+          });
+          updateData.today_position = (maxTodayPositionResult._max.today_position ?? -1) + 1;
+        }
+      } else {
+        // If clearing due_date, clear today_position
+        updateData.today_position = null;
+      }
     }
     if (body.position !== undefined) {
       updateData.position = body.position;
+    }
+    if (body.today_position !== undefined) {
+      updateData.today_position = body.today_position;
     }
     if (body.category_id !== undefined) {
       updateData.category_id = body.category_id;
@@ -37,7 +62,14 @@ export async function PUT(
       data: updateData,
     });
 
-    return NextResponse.json(item);
+    // Serialize dates
+    const serializedItem = {
+      ...item,
+      due_date: item.due_date ? item.due_date.toISOString().split('T')[0] : null,
+      created_at: item.created_at.toISOString()
+    };
+
+    return NextResponse.json(serializedItem);
   } catch (error: any) {
     if (error.code === 'P2025') {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
