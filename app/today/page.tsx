@@ -91,20 +91,8 @@ export default function TodayPage() {
   const completedItems = items.filter((item) => item.is_completed);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 p-8 pb-24">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        {completedItems.length > 0 && (
-          <div className="flex justify-end mb-8">
-            <button
-              onClick={handleDeleteCompleted}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              Erase Completed
-            </button>
-          </div>
-        )}
-
         {/* Add Item Button */}
         {!showAddForm && (
           <button
@@ -192,6 +180,16 @@ export default function TodayPage() {
           </div>
         )}
       </div>
+
+      {/* Erase Completed Button - Fixed at bottom right */}
+      {completedItems.length > 0 && (
+        <button
+          onClick={handleDeleteCompleted}
+          className="fixed bottom-8 right-8 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 shadow-lg"
+        >
+          Erase Completed
+        </button>
+      )}
     </div>
   );
 }

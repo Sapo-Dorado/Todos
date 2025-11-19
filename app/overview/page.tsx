@@ -102,20 +102,8 @@ export default function OverviewPage() {
     .some((item) => item.is_completed);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 p-8 pb-24">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        {hasCompletedItems && (
-          <div className="flex justify-end mb-8">
-            <button
-              onClick={handleDeleteCompleted}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              Erase Completed
-            </button>
-          </div>
-        )}
-
         {/* Add Category Button */}
         {!showCategoryForm && (
           <button
@@ -171,18 +159,20 @@ export default function OverviewPage() {
             const isEmpty = items.length === 0;
 
             return (
-              <div key={category.id} className="bg-white rounded-lg shadow-sm p-6">
+              <div key={category.id} className="bg-white rounded-lg shadow-sm p-6 relative">
+                {/* Delete Category Button */}
+                {isEmpty && (
+                  <button
+                    onClick={() => handleDeleteCategory(category.id)}
+                    className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center text-gray-500 bg-gray-100 hover:text-red-700 hover:bg-red-100 rounded text-xl font-bold"
+                  >
+                    -
+                  </button>
+                )}
+
                 {/* Category Header */}
-                <div className="flex justify-between items-center mb-4">
+                <div className="mb-4">
                   <h2 className="text-2xl font-semibold">{category.name}</h2>
-                  {isEmpty && (
-                    <button
-                      onClick={() => handleDeleteCategory(category.id)}
-                      className="text-red-500 hover:text-red-700 font-bold"
-                    >
-                      -
-                    </button>
-                  )}
                 </div>
 
                 {/* Add Item Button */}
@@ -269,6 +259,16 @@ export default function OverviewPage() {
           </div>
         )}
       </div>
+
+      {/* Erase Completed Button - Fixed at bottom right */}
+      {hasCompletedItems && (
+        <button
+          onClick={handleDeleteCompleted}
+          className="fixed bottom-8 right-8 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 shadow-lg"
+        >
+          Erase Completed
+        </button>
+      )}
     </div>
   );
 }
