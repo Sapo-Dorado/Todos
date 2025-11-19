@@ -2,7 +2,7 @@ export interface Category {
   id: number;
   name: string;
   position: number;
-  created_at: string;
+  created_at: string | Date;
 }
 
 export interface Item {
@@ -10,9 +10,9 @@ export interface Item {
   category_id: number;
   content: string;
   is_completed: boolean;
-  due_date: string | null;
+  due_date: string | Date | null;
   position: number;
-  created_at: string;
+  created_at: string | Date;
 }
 
 export interface CategoryWithItems extends Category {

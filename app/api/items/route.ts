@@ -9,9 +9,14 @@ export async function GET(request: NextRequest) {
 
     let items;
     if (date) {
-      // Get items for specific date
+      // Get items for today or before (overdue items)
+      const targetDate = new Date(date + 'T00:00:00');
       items = await prisma.item.findMany({
-        where: { due_date: new Date(date) },
+        where: {
+          due_date: {
+            lte: targetDate
+          }
+        },
         orderBy: [{ is_completed: 'asc' }, { position: 'asc' }],
       });
     } else if (categoryId) {

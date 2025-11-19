@@ -40,11 +40,14 @@ export default function TodoItem({
       if (showContextMenu) {
         setShowContextMenu(false);
       }
+      if (showDatePicker) {
+        setShowDatePicker(false);
+      }
     };
 
     window.addEventListener('click', handleClickOutside);
     return () => window.removeEventListener('click', handleClickOutside);
-  }, [showContextMenu]);
+  }, [showContextMenu, showDatePicker]);
 
   const handleComplete = async () => {
     await fetch(`/api/items/${item.id}`, {
@@ -76,6 +79,8 @@ export default function TodoItem({
   };
 
   const handleSetDate = async (date: string) => {
+    if (!date) return;
+
     await fetch(`/api/items/${item.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -102,7 +107,17 @@ export default function TodoItem({
     setShowContextMenu(true);
   };
 
-  const formatDueDate = (dateString: string) => {
+  const formatDueDate = (dateValue: string | Date | null) => {
+    if (!dateValue) return '📅';
+
+    // Parse the date properly - handle both string and Date objects
+    let dateString: string;
+    if (typeof dateValue === 'string') {
+      dateString = dateValue;
+    } else {
+      dateString = dateValue.toISOString().split('T')[0];
+    }
+
     const date = new Date(dateString + 'T00:00:00');
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -119,13 +134,30 @@ export default function TodoItem({
     return `${month} ${day}`;
   };
 
+  const isOverdue = () => {
+    if (!item.due_date) return false;
+
+    let dateString: string;
+    if (typeof item.due_date === 'string') {
+      dateString = item.due_date;
+    } else {
+      dateString = item.due_date.toISOString().split('T')[0];
+    }
+
+    const dueDate = new Date(dateString + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return dueDate < today && !item.is_completed;
+  };
+
   return (
     <>
       <div
         ref={itemRef}
         className={`flex items-center gap-2 p-3 border rounded-lg bg-white transition-all ${
           isHovered ? 'shadow-md' : ''
-        }`}
+        } ${isOverdue() ? 'border-red-500 border-2' : ''}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onContextMenu={handleContextMenu}
@@ -166,15 +198,22 @@ export default function TodoItem({
         {/* Schedule button */}
         <div className="relative">
           <button
-            onClick={() => setShowDatePicker(!showDatePicker)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDatePicker(!showDatePicker);
+            }}
             className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 whitespace-nowrap"
           >
             {item.due_date ? formatDueDate(item.due_date) : '📅'}
           </button>
           {showDatePicker && (
-            <div className="absolute right-0 mt-2 p-2 bg-white border rounded shadow-lg z-10">
+            <div
+              className="absolute right-0 mt-2 p-2 bg-white border rounded shadow-lg z-10"
+              onClick={(e) => e.stopPropagation()}
+            >
               <input
                 type="date"
+                value={item.due_date ? (typeof item.due_date === 'string' ? item.due_date : item.due_date.toISOString().split('T')[0]) : ''}
                 onChange={(e) => handleSetDate(e.target.value)}
                 className="border rounded px-2 py-1"
               />
@@ -188,6 +227,7 @@ export default function TodoItem({
         <div
           className="fixed bg-white border rounded shadow-lg py-1 z-50"
           style={{ left: contextMenuPos.x, top: contextMenuPos.y }}
+          onClick={(e) => e.stopPropagation()}
         >
           <button
             onClick={handleSetDueToday}
