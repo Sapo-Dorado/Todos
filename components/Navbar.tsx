@@ -12,7 +12,7 @@ export default function Navbar() {
   return (
     <nav className="bg-white border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-8 py-4">
-        <div className="flex gap-6">
+        <div className="flex justify-center gap-12">
           <Link
             href="/today"
             className={`text-lg hover:text-blue-600 transition-colors ${

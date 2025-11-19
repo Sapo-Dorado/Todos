@@ -105,17 +105,16 @@ export default function OverviewPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Overview</h1>
-          {hasCompletedItems && (
+        {hasCompletedItems && (
+          <div className="flex justify-end mb-8">
             <button
               onClick={handleDeleteCompleted}
               className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
             >
               Erase Completed
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Add Category Button */}
         {!showCategoryForm && (
