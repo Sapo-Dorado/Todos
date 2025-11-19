@@ -21,8 +21,8 @@ export default function TodoItem({
   isTodayView = false,
 }: TodoItemProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const itemRef = useRef<HTMLDivElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -38,16 +38,6 @@ export default function TodoItem({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isHovered, item.id]);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (showDatePicker) {
-        setShowDatePicker(false);
-      }
-    };
-
-    window.addEventListener('click', handleClickOutside);
-    return () => window.removeEventListener('click', handleClickOutside);
-  }, [showDatePicker]);
 
   const handleComplete = async () => {
     await fetch(`/api/items/${item.id}`, {
@@ -87,7 +77,6 @@ export default function TodoItem({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ due_date: date }),
     });
-    setShowDatePicker(false);
     onUpdate();
   };
 
@@ -203,28 +192,23 @@ export default function TodoItem({
 
         {/* Schedule button */}
         <div className="relative">
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={item.due_date || ''}
+            onChange={(e) => handleSetDate(e.target.value)}
+            className="absolute opacity-0 pointer-events-none"
+            style={{ width: 0, height: 0 }}
+          />
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setShowDatePicker(!showDatePicker);
+              dateInputRef.current?.showPicker();
             }}
             className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 whitespace-nowrap"
           >
             {item.due_date ? formatDueDate(item.due_date) : '📅'}
           </button>
-          {showDatePicker && (
-            <div
-              className="absolute right-0 mt-2 p-2 bg-white border rounded shadow-lg z-10"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <input
-                type="date"
-                value={item.due_date || ''}
-                onChange={(e) => handleSetDate(e.target.value)}
-                className="border rounded px-2 py-1"
-              />
-            </div>
-          )}
         </div>
       </div>
     </>
