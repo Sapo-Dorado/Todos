@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 
 export async function DELETE(
   request: NextRequest,
@@ -9,18 +9,20 @@ export async function DELETE(
     const { id } = await params;
 
     // Check if category is empty
-    const items = await sql`
-      SELECT COUNT(*) as count FROM items WHERE category_id = ${id}
-    `;
+    const itemCount = await prisma.item.count({
+      where: { category_id: parseInt(id) },
+    });
 
-    if (parseInt(items.rows[0].count) > 0) {
+    if (itemCount > 0) {
       return NextResponse.json(
         { error: 'Cannot delete category with items' },
         { status: 400 }
       );
     }
 
-    await sql`DELETE FROM categories WHERE id = ${id}`;
+    await prisma.category.delete({
+      where: { id: parseInt(id) },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

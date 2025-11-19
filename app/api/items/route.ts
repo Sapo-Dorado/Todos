@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,30 +7,27 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get('date');
     const categoryId = searchParams.get('categoryId');
 
-    let result;
+    let items;
     if (date) {
       // Get items for specific date
-      result = await sql`
-        SELECT * FROM items
-        WHERE due_date = ${date}
-        ORDER BY is_completed ASC, position ASC
-      `;
+      items = await prisma.item.findMany({
+        where: { due_date: new Date(date) },
+        orderBy: [{ is_completed: 'asc' }, { position: 'asc' }],
+      });
     } else if (categoryId) {
       // Get items for specific category
-      result = await sql`
-        SELECT * FROM items
-        WHERE category_id = ${categoryId}
-        ORDER BY is_completed ASC, position ASC
-      `;
+      items = await prisma.item.findMany({
+        where: { category_id: parseInt(categoryId) },
+        orderBy: [{ is_completed: 'asc' }, { position: 'asc' }],
+      });
     } else {
       // Get all items
-      result = await sql`
-        SELECT * FROM items
-        ORDER BY category_id, is_completed ASC, position ASC
-      `;
+      items = await prisma.item.findMany({
+        orderBy: [{ category_id: 'asc' }, { is_completed: 'asc' }, { position: 'asc' }],
+      });
     }
 
-    return NextResponse.json(result.rows);
+    return NextResponse.json(items);
   } catch (error) {
     console.error('Error fetching items:', error);
     return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 });
@@ -42,20 +39,25 @@ export async function POST(request: NextRequest) {
     const { content, category_id, due_date } = await request.json();
 
     // Get the highest position for this category
-    const maxPosition = await sql`
-      SELECT COALESCE(MAX(position), -1) as max_pos
-      FROM items
-      WHERE category_id = ${category_id} AND is_completed = false
-    `;
-    const newPosition = maxPosition.rows[0].max_pos + 1;
+    const maxPositionResult = await prisma.item.aggregate({
+      where: {
+        category_id: category_id,
+        is_completed: false,
+      },
+      _max: { position: true },
+    });
+    const newPosition = (maxPositionResult._max.position ?? -1) + 1;
 
-    const result = await sql`
-      INSERT INTO items (content, category_id, due_date, position)
-      VALUES (${content}, ${category_id}, ${due_date || null}, ${newPosition})
-      RETURNING *
-    `;
+    const item = await prisma.item.create({
+      data: {
+        content,
+        category_id,
+        due_date: due_date ? new Date(due_date) : null,
+        position: newPosition,
+      },
+    });
 
-    return NextResponse.json(result.rows[0], { status: 201 });
+    return NextResponse.json(item, { status: 201 });
   } catch (error) {
     console.error('Error creating item:', error);
     return NextResponse.json({ error: 'Failed to create item' }, { status: 500 });

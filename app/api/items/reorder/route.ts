@@ -1,30 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
     const { itemId, direction, categoryId } = await request.json();
 
     // Get current item
-    const currentItem = await sql`
-      SELECT * FROM items WHERE id = ${itemId}
-    `;
+    const item = await prisma.item.findUnique({
+      where: { id: parseInt(itemId) },
+    });
 
-    if (currentItem.rows.length === 0) {
+    if (!item) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    const item = currentItem.rows[0];
     const currentPosition = item.position;
 
     // Get items in the same category (excluding completed items)
-    const items = await sql`
-      SELECT * FROM items
-      WHERE category_id = ${categoryId} AND is_completed = false
-      ORDER BY position ASC
-    `;
+    const itemList = await prisma.item.findMany({
+      where: {
+        category_id: categoryId,
+        is_completed: false,
+      },
+      orderBy: { position: 'asc' },
+    });
 
-    const itemList = items.rows;
     const currentIndex = itemList.findIndex((i) => i.id === parseInt(itemId));
 
     if (currentIndex === -1) {
@@ -44,8 +44,14 @@ export async function POST(request: NextRequest) {
 
     // Swap positions
     const swapItem = itemList[swapIndex];
-    await sql`UPDATE items SET position = ${swapItem.position} WHERE id = ${itemId}`;
-    await sql`UPDATE items SET position = ${currentPosition} WHERE id = ${swapItem.id}`;
+    await prisma.item.update({
+      where: { id: parseInt(itemId) },
+      data: { position: swapItem.position },
+    });
+    await prisma.item.update({
+      where: { id: swapItem.id },
+      data: { position: currentPosition },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
