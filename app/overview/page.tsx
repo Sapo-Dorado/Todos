@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Item, Category } from '@/types';
+import { Item, Category, Universe } from '@/types';
 import TodoItem from '@/components/TodoItem';
 
 export default function OverviewPage() {
+  const [universes, setUniverses] = useState<Universe[]>([]);
+  const [selectedUniverseId, setSelectedUniverseId] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [itemsByCategory, setItemsByCategory] = useState<{ [key: number]: Item[] }>({});
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -13,17 +15,41 @@ export default function OverviewPage() {
   const [newItemContent, setNewItemContent] = useState('');
 
   useEffect(() => {
-    fetchData();
+    fetchUniverses();
   }, []);
+
+  useEffect(() => {
+    if (selectedUniverseId !== null) {
+      fetchData();
+    }
+  }, [selectedUniverseId]);
+
+  useEffect(() => {
+    // Auto-select first universe when universes are loaded
+    if (universes.length > 0 && selectedUniverseId === null) {
+      setSelectedUniverseId(universes[0].id);
+    }
+  }, [universes, selectedUniverseId]);
+
+  const fetchUniverses = async () => {
+    const res = await fetch('/api/universes');
+    const data = await res.json();
+    setUniverses(data);
+  };
 
   const fetchData = async () => {
     await Promise.all([fetchCategories(), fetchItems()]);
   };
 
   const fetchCategories = async () => {
+    if (selectedUniverseId === null) return;
+
     const res = await fetch('/api/categories');
-    const data = await res.json();
-    setCategories(data);
+    const data: Category[] = await res.json();
+
+    // Filter categories by selected universe
+    const filteredCategories = data.filter(cat => cat.universe_id === selectedUniverseId);
+    setCategories(filteredCategories);
   };
 
   const fetchItems = async () => {
@@ -53,12 +79,15 @@ export default function OverviewPage() {
   };
 
   const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) return;
+    if (!newCategoryName.trim() || selectedUniverseId === null) return;
 
     await fetch('/api/categories', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newCategoryName }),
+      body: JSON.stringify({
+        name: newCategoryName,
+        universe_id: selectedUniverseId
+      }),
     });
 
     setNewCategoryName('');
@@ -104,6 +133,24 @@ export default function OverviewPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8 pb-24">
       <div className="max-w-6xl mx-auto">
+        {/* Universe Selector */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Select Universe
+          </label>
+          <select
+            value={selectedUniverseId || ''}
+            onChange={(e) => setSelectedUniverseId(Number(e.target.value))}
+            className="w-full p-3 border rounded-lg bg-white"
+          >
+            {universes.map((universe) => (
+              <option key={universe.id} value={universe.id}>
+                {universe.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Add Category Button */}
         {!showCategoryForm && (
           <button

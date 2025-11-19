@@ -22,10 +22,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name } = await request.json();
+    const { name, universe_id } = await request.json();
 
-    // Get the highest position
+    // Get the highest position within this universe
     const maxPositionResult = await prisma.category.aggregate({
+      where: { universe_id },
       _max: { position: true },
     });
     const newPosition = (maxPositionResult._max.position ?? -1) + 1;
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
     const category = await prisma.category.create({
       data: {
         name,
+        universe_id,
         position: newPosition,
       },
     });

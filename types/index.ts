@@ -1,5 +1,13 @@
+export interface Universe {
+  id: number;
+  name: string;
+  position: number;
+  created_at: string;
+}
+
 export interface Category {
   id: number;
+  universe_id: number;
   name: string;
   position: number;
   created_at: string;
