@@ -32,7 +32,11 @@ export default function UniversesPage() {
     fetchUniverses();
   };
 
-  const handleDeleteUniverse = async (universeId: number) => {
+  const handleDeleteUniverse = async (universeId: number, universeName: string) => {
+    if (!confirm(`Are you sure you want to delete the universe "${universeName}"? This will delete all categories and items within it. This action cannot be undone.`)) {
+      return;
+    }
+
     const res = await fetch(`/api/universes/${universeId}`, {
       method: 'DELETE',
     });
@@ -105,7 +109,7 @@ export default function UniversesPage() {
             >
               <h2 className="text-2xl font-semibold">{universe.name}</h2>
               <button
-                onClick={() => handleDeleteUniverse(universe.id)}
+                onClick={() => handleDeleteUniverse(universe.id, universe.name)}
                 className="text-red-500 hover:text-red-700 text-sm"
               >
                 Delete

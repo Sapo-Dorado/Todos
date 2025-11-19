@@ -95,7 +95,11 @@ export default function OverviewPage() {
     fetchData();
   };
 
-  const handleDeleteCategory = async (categoryId: number) => {
+  const handleDeleteCategory = async (categoryId: number, categoryName: string) => {
+    if (!confirm(`Are you sure you want to delete the category "${categoryName}"? This action cannot be undone.`)) {
+      return;
+    }
+
     await fetch(`/api/categories/${categoryId}`, {
       method: 'DELETE',
     });
@@ -210,7 +214,7 @@ export default function OverviewPage() {
                 {/* Delete Category Button */}
                 {isEmpty && (
                   <button
-                    onClick={() => handleDeleteCategory(category.id)}
+                    onClick={() => handleDeleteCategory(category.id, category.name)}
                     className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center text-gray-500 bg-gray-100 hover:text-red-700 hover:bg-red-100 rounded text-xl font-bold"
                   >
                     -
