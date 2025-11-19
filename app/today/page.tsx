@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Item, Category } from '@/types';
+import { Item, Category, Universe } from '@/types';
 import TodoItem from '@/components/TodoItem';
 
 export default function TodayPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [universes, setUniverses] = useState<Universe[]>([]);
   const [newItemContent, setNewItemContent] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -18,6 +19,7 @@ export default function TodayPage() {
   useEffect(() => {
     fetchItems();
     fetchCategories();
+    fetchUniverses();
   }, []);
 
   useEffect(() => {
@@ -25,6 +27,12 @@ export default function TodayPage() {
       setSelectedCategoryId(categories[0].id);
     }
   }, [categories]);
+
+  const fetchUniverses = async () => {
+    const res = await fetch('/api/universes');
+    const data = await res.json();
+    setUniverses(data);
+  };
 
   const fetchItems = async () => {
     try {
@@ -90,6 +98,19 @@ export default function TodayPage() {
   const incompleteItems = items.filter((item) => !item.is_completed);
   const completedItems = items.filter((item) => item.is_completed);
 
+  // Group incomplete items by universe
+  const itemsByUniverse: { [universeId: number]: Item[] } = {};
+  incompleteItems.forEach((item) => {
+    const category = categories.find(cat => cat.id === item.category_id);
+    if (category) {
+      const universeId = category.universe_id;
+      if (!itemsByUniverse[universeId]) {
+        itemsByUniverse[universeId] = [];
+      }
+      itemsByUniverse[universeId].push(item);
+    }
+  });
+
   return (
     <div className="min-h-screen bg-gray-50 p-8 pb-24">
       <div className="max-w-4xl mx-auto">
@@ -150,28 +171,56 @@ export default function TodayPage() {
           </div>
         )}
 
-        {/* Items List */}
-        <div className="space-y-2">
-          {incompleteItems.map((item, index) => (
-            <TodoItem
-              key={item.id}
-              item={item}
-              onUpdate={fetchItems}
-              showReorder={true}
-              canMoveUp={index > 0}
-              canMoveDown={index < incompleteItems.length - 1}
-              isTodayView={true}
-            />
-          ))}
-          {completedItems.map((item) => (
-            <TodoItem
-              key={item.id}
-              item={item}
-              onUpdate={fetchItems}
-              showReorder={false}
-              isTodayView={true}
-            />
-          ))}
+        {/* Items List - Grouped by Universe */}
+        <div className="space-y-6">
+          {universes.map((universe) => {
+            const universeItems = itemsByUniverse[universe.id] || [];
+            if (universeItems.length === 0) return null;
+
+            return (
+              <div key={universe.id}>
+                {/* Universe Label */}
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">
+                  {universe.name}
+                </div>
+
+                {/* Items in this universe */}
+                <div className="space-y-2">
+                  {universeItems.map((item, index) => (
+                    <TodoItem
+                      key={item.id}
+                      item={item}
+                      onUpdate={fetchItems}
+                      showReorder={true}
+                      canMoveUp={index > 0}
+                      canMoveDown={index < universeItems.length - 1}
+                      isTodayView={true}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Completed Items */}
+          {completedItems.length > 0 && (
+            <div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">
+                Completed
+              </div>
+              <div className="space-y-2">
+                {completedItems.map((item) => (
+                  <TodoItem
+                    key={item.id}
+                    item={item}
+                    onUpdate={fetchItems}
+                    showReorder={false}
+                    isTodayView={true}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {items.length === 0 && (
