@@ -29,6 +29,9 @@ export default function TodoItem({
       if (isHovered && (e.key === 'Delete' || e.key === 'Backspace')) {
         handleDelete();
       }
+      if (isHovered && e.key === 'Escape') {
+        handleClearDate();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -85,6 +88,15 @@ export default function TodoItem({
       body: JSON.stringify({ due_date: date }),
     });
     setShowDatePicker(false);
+    onUpdate();
+  };
+
+  const handleClearDate = async () => {
+    await fetch(`/api/items/${item.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ due_date: null }),
+    });
     onUpdate();
   };
 
